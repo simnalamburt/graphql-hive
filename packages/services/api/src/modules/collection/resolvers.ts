@@ -38,31 +38,6 @@ const OperationValidationInputModel = zod
 
 export const resolvers: CollectionModule.Resolvers = {
   Mutation: {
-    async updateDocumentCollection(_, { selector, input }, { injector }) {
-      const target = await validateTargetAccess(
-        injector,
-        selector,
-        TargetAccessScope.REGISTRY_WRITE,
-      );
-      const result = await injector.get(CollectionProvider).updateCollection(input);
-
-      if (!result) {
-        return {
-          error: {
-            __typename: 'ModifyDocumentCollectionError',
-            message: 'Failed to locate a document collection',
-          },
-        };
-      }
-
-      return {
-        ok: {
-          __typename: 'ModifyDocumentCollectionOkPayload',
-          collection: result,
-          updatedTarget: target,
-        },
-      };
-    },
     async deleteDocumentCollection(_, { selector, id }, { injector }) {
       const target = await validateTargetAccess(
         injector,
