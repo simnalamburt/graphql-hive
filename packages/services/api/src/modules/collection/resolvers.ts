@@ -64,14 +64,6 @@ async function validateTargetAccess(
 }
 
 export const resolvers: CollectionModule.Resolvers = {
-  Target: {
-    documentCollections: (target, args, { injector }) =>
-      injector.get(CollectionProvider).getCollections(target.id, args.first, args.after),
-    documentCollectionOperation: (_, args, { injector }) =>
-      injector.get(CollectionProvider).getOperation(args.id),
-    documentCollection: (_, args, { injector }) =>
-      injector.get(CollectionProvider).getCollection(args.id),
-  },
   Mutation: {
     async createDocumentCollection(_, { selector, input }, { injector }) {
       const target = await validateTargetAccess(
