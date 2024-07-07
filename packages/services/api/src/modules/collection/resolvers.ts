@@ -1,11 +1,6 @@
-import { Injector } from 'graphql-modules';
 import * as zod from 'zod';
 import { fromZodError } from 'zod-validation-error';
-import { TargetSelectorInput } from '../../__generated__/types';
-import { AuthManager } from '../auth/providers/auth-manager';
 import { TargetAccessScope } from '../auth/providers/scopes';
-import { IdTranslator } from '../shared/providers/id-translator';
-import { Storage } from '../shared/providers/storage';
 import { CollectionModule } from './__generated__/types';
 import { CollectionProvider } from './providers/collection.provider';
 
@@ -41,46 +36,8 @@ const OperationValidationInputModel = zod
   .partial()
   .passthrough();
 
-async function validateTargetAccess(
-  injector: Injector,
-  selector: TargetSelectorInput,
-  scope: TargetAccessScope = TargetAccessScope.REGISTRY_READ,
-) {
-  const translator = injector.get(IdTranslator);
-  const [organization, project, target] = await Promise.all([
-    translator.translateOrganizationId(selector),
-    translator.translateProjectId(selector),
-    translator.translateTargetId(selector),
-  ]);
-
-  await injector.get(AuthManager).ensureTargetAccess({
-    organization,
-    project,
-    target,
-    scope,
-  });
-
-  return await injector.get(Storage).getTarget({ target, organization, project });
-}
-
 export const resolvers: CollectionModule.Resolvers = {
   Mutation: {
-    async createDocumentCollection(_, { selector, input }, { injector }) {
-      const target = await validateTargetAccess(
-        injector,
-        selector,
-        TargetAccessScope.REGISTRY_WRITE,
-      );
-      const result = await injector.get(CollectionProvider).createCollection(target.id, input);
-
-      return {
-        ok: {
-          __typename: 'ModifyDocumentCollectionOkPayload',
-          collection: result,
-          updatedTarget: target,
-        },
-      };
-    },
     async updateDocumentCollection(_, { selector, input }, { injector }) {
       const target = await validateTargetAccess(
         injector,
