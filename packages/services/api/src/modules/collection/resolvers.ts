@@ -64,22 +64,6 @@ async function validateTargetAccess(
 }
 
 export const resolvers: CollectionModule.Resolvers = {
-  DocumentCollectionOperation: {
-    name: op => op.title,
-    query: op => op.contents,
-    async collection(op, args, { injector }) {
-      const collection = await injector
-        .get(CollectionProvider)
-        .getCollection(op.documentCollectionId);
-
-      // This should not happen, but we do want to flag this as an unexpected error.
-      if (!collection) {
-        throw new Error('Collection not found');
-      }
-
-      return collection;
-    },
-  },
   Target: {
     documentCollections: (target, args, { injector }) =>
       injector.get(CollectionProvider).getCollections(target.id, args.first, args.after),
