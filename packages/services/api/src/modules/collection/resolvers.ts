@@ -64,13 +64,6 @@ async function validateTargetAccess(
 }
 
 export const resolvers: CollectionModule.Resolvers = {
-  DocumentCollection: {
-    id: root => root.id,
-    name: root => root.title,
-    description: root => root.description,
-    operations: (root, args, { injector }) =>
-      injector.get(CollectionProvider).getOperations(root.id, args.first, args.after),
-  },
   DocumentCollectionOperation: {
     name: op => op.title,
     query: op => op.contents,
