@@ -1,5 +1,5 @@
 import { CollectionProvider } from '../../providers/collection.provider';
-import { validateTargetAccess } from '../../validateTargetAccess';
+import { validateTargetAccess } from '../../validation';
 import { TargetAccessScope, type MutationResolvers } from './../../../../__generated__/types.next';
 
 export const deleteDocumentCollection: NonNullable<
