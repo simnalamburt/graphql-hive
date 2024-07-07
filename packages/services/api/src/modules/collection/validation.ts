@@ -5,28 +5,6 @@ import { AuthManager } from '../auth/providers/auth-manager';
 import { TargetAccessScope } from '../auth/providers/scopes';
 import { IdTranslator } from '../shared/providers/id-translator';
 
-export async function validateTargetAccess(
-  injector: Injector,
-  selector: TargetSelectorInput,
-  scope: TargetAccessScope = TargetAccessScope.REGISTRY_READ,
-) {
-  const translator = injector.get(IdTranslator);
-  const [organization, project, target] = await Promise.all([
-    translator.translateOrganizationId(selector),
-    translator.translateProjectId(selector),
-    translator.translateTargetId(selector),
-  ]);
-
-  await injector.get(AuthManager).ensureTargetAccess({
-    organization,
-    project,
-    target,
-    scope,
-  });
-
-  return await injector.get(Storage).getTarget({ target, organization, project });
-}
-
 const MAX_INPUT_LENGTH = 5000;
 
 // The following validates the length and the validity of the JSON object incoming as string.
@@ -58,3 +36,25 @@ export const OperationValidationInputModel = zod
   })
   .partial()
   .passthrough();
+
+export async function validateTargetAccess(
+  injector: Injector,
+  selector: TargetSelectorInput,
+  scope: TargetAccessScope = TargetAccessScope.REGISTRY_READ,
+) {
+  const translator = injector.get(IdTranslator);
+  const [organization, project, target] = await Promise.all([
+    translator.translateOrganizationId(selector),
+    translator.translateProjectId(selector),
+    translator.translateTargetId(selector),
+  ]);
+
+  await injector.get(AuthManager).ensureTargetAccess({
+    organization,
+    project,
+    target,
+    scope,
+  });
+
+  return await injector.get(Storage).getTarget({ target, organization, project });
+}

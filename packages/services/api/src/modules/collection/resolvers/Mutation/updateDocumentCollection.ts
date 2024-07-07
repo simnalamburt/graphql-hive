@@ -1,6 +1,7 @@
+import { TargetAccessScope } from '../../../auth/providers/scopes';
 import { CollectionProvider } from '../../providers/collection.provider';
 import { validateTargetAccess } from '../../validation';
-import { TargetAccessScope, type MutationResolvers } from './../../../../__generated__/types.next';
+import type { MutationResolvers } from './../../../../__generated__/types.next';
 
 export const updateDocumentCollection: NonNullable<
   MutationResolvers['updateDocumentCollection']
