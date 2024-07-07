@@ -38,22 +38,6 @@ const OperationValidationInputModel = zod
 
 export const resolvers: CollectionModule.Resolvers = {
   Mutation: {
-    async deleteDocumentCollection(_, { selector, id }, { injector }) {
-      const target = await validateTargetAccess(
-        injector,
-        selector,
-        TargetAccessScope.REGISTRY_WRITE,
-      );
-      await injector.get(CollectionProvider).deleteCollection(id);
-
-      return {
-        ok: {
-          __typename: 'DeleteDocumentCollectionOkPayload',
-          deletedId: id,
-          updatedTarget: target,
-        },
-      };
-    },
     async createOperationInDocumentCollection(_, { selector, input }, { injector }) {
       try {
         OperationValidationInputModel.parse(input);
