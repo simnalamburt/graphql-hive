@@ -7,7 +7,4 @@ export const DocumentCollection: DocumentCollectionResolvers = {
   description: root => root.description,
   operations: (root, args, { injector }) =>
     injector.get(CollectionProvider).getOperations(root.id, args.first, args.after),
-  createdBy: async (_parent, _arg, _ctx) => {
-    /* DocumentCollection.createdBy resolver is required because DocumentCollection.createdBy exists but DocumentCollectionMapper.createdBy does not */
-  },
 };
