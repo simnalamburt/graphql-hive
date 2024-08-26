@@ -39,6 +39,7 @@ import type * as Types from '../../__generated__/types';
 import { type DateRange } from '../../shared/entities';
 import { createPeriod, parseDateRangeInput, PromiseOrValue } from '../../shared/helpers';
 import { buildASTSchema, createConnection, createDummyConnection } from '../../shared/schema';
+import { AuditLogManager } from '../audit-logs/providers/audit-logs-manager';
 import { AuthManager } from '../auth/providers/auth-manager';
 import { OperationsManager } from '../operations/providers/operations-manager';
 import { OrganizationManager } from '../organization/providers/organization-manager';
@@ -156,6 +157,25 @@ export const resolvers: SchemaModule.Resolvers = {
         target,
       });
 
+      // Audit Log Event
+      if (result.__typename === 'SchemaCheckSuccess') {
+        const currentUser = await injector.get(AuthManager).getCurrentUser();
+        await injector.get(AuditLogManager).createLogAuditEvent({
+          eventTime: new Date().toISOString(),
+          eventType: 'SCHEMA_CHECKED',
+          organizationId: organization,
+          user: {
+            userId: currentUser.id,
+            userEmail: currentUser.email,
+          },
+          SchemaCheckedAuditLogSchema: {
+            projectId: project,
+            targetId: target,
+            schemaSdl: input.sdl,
+          },
+        });
+      }
+
       if ('changes' in result && result.changes) {
         return {
           ...result,
@@ -230,6 +250,27 @@ export const resolvers: SchemaModule.Resolvers = {
         request.signal,
       );
 
+      // Audit Log Event
+      if (result.__typename === 'SchemaPublishSuccess') {
+        const currentUser = await injector.get(AuthManager).getCurrentUser();
+
+        await injector.get(AuditLogManager).createLogAuditEvent({
+          eventTime: new Date().toISOString(),
+          eventType: 'SCHEMA_PUBLISH',
+          organizationId: organization,
+          user: {
+            userId: currentUser.id,
+            userEmail: currentUser.email,
+          },
+          SchemaPublishAuditLogSchema: {
+            projectId: project,
+            targetId: target,
+            schemaSdl: input.sdl,
+            schemaName: input.service,
+          },
+        });
+      }
+
       if ('changes' in result) {
         return {
           ...result,
@@ -269,6 +310,26 @@ export const resolvers: SchemaModule.Resolvers = {
         },
         request.signal,
       );
+
+      /// Audit Log Event
+      if (result.__typename === 'SchemaDeleteSuccess') {
+        const currentUser = await injector.get(AuthManager).getCurrentUser();
+
+        await injector.get(AuditLogManager).createLogAuditEvent({
+          eventTime: new Date().toISOString(),
+          eventType: 'SCHEMA_DELETED',
+          organizationId: organization,
+          user: {
+            userId: currentUser.id,
+            userEmail: currentUser.email,
+          },
+          SchemaDeletedAuditLogSchema: {
+            projectId: project,
+            schemaName: input.serviceName,
+            targetId: target.id,
+          },
+        });
+      }
 
       return {
         ...result,
@@ -353,6 +414,25 @@ export const resolvers: SchemaModule.Resolvers = {
       const selector = { organization, project, target };
       await schemaManager.updateBaseSchema(selector, input.newBase ? input.newBase : null);
 
+      // Audit Log Event
+      const currentUser = await injector.get(AuthManager).getCurrentUser();
+      const allUpdatedFields = JSON.stringify({
+        newBase: input.newBase,
+      });
+      await injector.get(AuditLogManager).createLogAuditEvent({
+        eventTime: new Date().toISOString(),
+        eventType: 'SCHEMA_POLICY_SETTINGS_UPDATED',
+        organizationId: organization,
+        user: {
+          userId: currentUser.id,
+          userEmail: currentUser.email,
+        },
+        SchemaPolicySettingsUpdatedAuditLogSchema: {
+          projectId: project,
+          updatedFields: allUpdatedFields,
+        },
+      });
+
       return {
         ok: {
           updatedTarget: await injector.get(TargetManager).getTarget({
@@ -370,10 +450,32 @@ export const resolvers: SchemaModule.Resolvers = {
         translator.translateProjectId(input),
       ]);
 
-      return injector.get(SchemaManager).disableExternalSchemaComposition({
+      const result = await injector.get(SchemaManager).disableExternalSchemaComposition({
         project,
         organization,
       });
+
+      if (result.ok) {
+        // Audit Log Event
+        const currentUser = await injector.get(AuthManager).getCurrentUser();
+        await injector.get(AuditLogManager).createLogAuditEvent({
+          eventTime: new Date().toISOString(),
+          eventType: 'SCHEMA_POLICY_SETTINGS_UPDATED',
+          organizationId: organization,
+          user: {
+            userId: currentUser.id,
+            userEmail: currentUser.email,
+          },
+          SchemaPolicySettingsUpdatedAuditLogSchema: {
+            projectId: project,
+            updatedFields: JSON.stringify({
+              externalComposition: false,
+            }),
+          },
+        });
+      }
+
+      return result;
     },
     async enableExternalSchemaComposition(_, { input }, { injector }) {
       const translator = injector.get(IdTranslator);
@@ -382,12 +484,33 @@ export const resolvers: SchemaModule.Resolvers = {
         translator.translateProjectId(input),
       ]);
 
-      return injector.get(SchemaManager).enableExternalSchemaComposition({
+      const result = await injector.get(SchemaManager).enableExternalSchemaComposition({
         project,
         organization,
         endpoint: input.endpoint,
         secret: input.secret,
       });
+
+      if (result.ok) {
+        // Audit Log Event
+        const currentUser = await injector.get(AuthManager).getCurrentUser();
+        await injector.get(AuditLogManager).createLogAuditEvent({
+          eventTime: new Date().toISOString(),
+          eventType: 'SCHEMA_POLICY_SETTINGS_UPDATED',
+          organizationId: organization,
+          user: {
+            userId: currentUser.id,
+            userEmail: currentUser.email,
+          },
+          SchemaPolicySettingsUpdatedAuditLogSchema: {
+            projectId: project,
+            updatedFields: JSON.stringify({
+              externalComposition: true,
+            }),
+          },
+        });
+      }
+      return result;
     },
     async updateNativeFederation(_, { input }, { injector }) {
       const translator = injector.get(IdTranslator);
