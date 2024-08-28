@@ -24,6 +24,7 @@ import { QueryError } from '@/components/ui/query-error';
 import { ToggleGroup, ToggleGroupItem } from '@/components/v2/toggle-group';
 import { graphql } from '@/gql';
 import { useClipboard, useNotifications, useToggle } from '@/lib/hooks';
+import { preflightScriptPlugin } from '@/lib/hooks/laboratory/preflight-script-plugin';
 import { useCollections } from '@/lib/hooks/laboratory/use-collections';
 import { useCurrentOperation } from '@/lib/hooks/laboratory/use-current-operation';
 import {
@@ -51,7 +52,7 @@ import '@graphiql/plugin-explorer/style.css';
 const explorer = explorerPlugin();
 
 // Declare outside components, otherwise while clicking on field in explorer operationCollectionsPlugin will be open
-const plugins = [explorer, operationCollectionsPlugin];
+const plugins = [explorer, operationCollectionsPlugin, preflightScriptPlugin];
 
 function Share(): ReactElement | null {
   const label = 'Share query';
