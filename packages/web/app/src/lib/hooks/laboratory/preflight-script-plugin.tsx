@@ -31,59 +31,61 @@ export const preflightScriptPlugin: GraphiQLPlugin = {
     </svg>
   ),
   title: 'Preflight script',
-  content: function Content() {
-    const [value, setValue] = useState("console.log('Hello world')");
-    const [showModal, toggleShowModal] = useToggle(true);
-    const [checked, setChecked] = useState(false);
-
-    return (
-      <>
-        <PreflightScriptModal
-          isOpen={showModal}
-          toggle={toggleShowModal}
-          value={value}
-          onChange={setValue}
-        />
-        <div className="graphiql-doc-explorer-title flex items-center justify-between gap-4">
-          Preflight Script
-          <Button
-            variant="orangeLink"
-            size="icon-sm"
-            className="size-auto gap-1"
-            onClick={toggleShowModal}
-          >
-            <Pencil1Icon className="shrink-0" />
-            Edit
-          </Button>
-        </div>
-        <p className="text-sm text-gray-400">
-          This script is run before each operation submitted, e.g. for automated authentication.
-        </p>
-
-        <div className="flex items-center gap-2 text-sm">
-          <Switch checked={checked} onCheckedChange={setChecked} className="my-4" />
-          <span className="w-6">{checked ? 'ON' : 'OFF'}</span>
-        </div>
-
-        {checked && (
-          <MonacoEditor
-            height="auto"
-            className="h-32 *:rounded-md *:bg-[hsla(var(--color-neutral),var(--alpha-background-light))] *:py-3 *:opacity-70"
-            defaultLanguage="javascript"
-            value={value}
-            onChange={(newValue = '') => setValue(newValue)}
-            theme="vs-dark"
-            options={{
-              minimap: { enabled: false },
-              lineNumbers: 'off',
-              readOnly: true,
-            }}
-          />
-        )}
-      </>
-    );
-  },
+  content: PreflightScriptContent,
 };
+
+function PreflightScriptContent() {
+  const [value, setValue] = useState("console.log('Hello world')");
+  const [showModal, toggleShowModal] = useToggle(true);
+  const [checked, setChecked] = useState(false);
+
+  return (
+    <>
+      <PreflightScriptModal
+        isOpen={showModal}
+        toggle={toggleShowModal}
+        value={value}
+        onChange={setValue}
+      />
+      <div className="graphiql-doc-explorer-title flex items-center justify-between gap-4">
+        Preflight Script
+        <Button
+          variant="orangeLink"
+          size="icon-sm"
+          className="size-auto gap-1"
+          onClick={toggleShowModal}
+        >
+          <Pencil1Icon className="shrink-0" />
+          Edit
+        </Button>
+      </div>
+      <p className="text-sm text-gray-400">
+        This script is run before each operation submitted, e.g. for automated authentication.
+      </p>
+
+      <div className="flex items-center gap-2 text-sm">
+        <Switch checked={checked} onCheckedChange={setChecked} className="my-4" />
+        <span className="w-6">{checked ? 'ON' : 'OFF'}</span>
+      </div>
+
+      {checked && (
+        <MonacoEditor
+          height="auto"
+          className="h-32 *:rounded-md *:bg-[hsla(var(--color-neutral),var(--alpha-background-light))] *:py-3 *:opacity-70"
+          defaultLanguage="javascript"
+          value={value}
+          onChange={(newValue = '') => setValue(newValue)}
+          theme="vs-dark"
+          options={{
+            minimap: { enabled: false },
+            lineNumbers: 'off',
+            readOnly: true,
+          }}
+        />
+      )}
+    </>
+  );
+}
 
 function PreflightScriptModal({
   isOpen,
