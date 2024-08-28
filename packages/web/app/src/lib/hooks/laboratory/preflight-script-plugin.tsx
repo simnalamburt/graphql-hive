@@ -1,4 +1,5 @@
 import { ComponentProps, useCallback, useState } from 'react';
+import { clsx } from 'clsx';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,21 +42,50 @@ const storageKey = {
   disabled: 'preflightScript:disabled',
 };
 
-const monacoOptions = {
+const classes = {
+  monaco: clsx('*:bg-[#10151f]'),
+  monacoMini: clsx('h-32 *:rounded-md *:bg-[#10151f]'),
+};
+
+const monacoProps = {
   env: {
-    minimap: { enabled: false },
-    lineNumbers: 'off' as const,
-    tabSize: 2,
+    theme: 'vs-dark',
+    defaultLanguage: 'json',
+    className: classes.monaco,
+    options: {
+      minimap: { enabled: false },
+      padding: {
+        top: 10,
+      },
+      lineNumbers: 'off',
+      tabSize: 2,
+    },
   },
   console: {
-    minimap: { enabled: false },
-    lineNumbers: 'off',
-    readOnly: true,
+    theme: 'vs-dark',
+    defaultLanguage: 'javascript',
+    className: classes.monaco,
+    options: {
+      minimap: { enabled: false },
+      padding: {
+        top: 10,
+      },
+      lineNumbers: 'off',
+      readOnly: true,
+    },
   },
   script: {
-    minimap: { enabled: false },
+    theme: 'vs-dark',
+    defaultLanguage: 'javascript',
+    className: classes.monaco,
+    options: {
+      minimap: { enabled: false },
+      padding: {
+        top: 10,
+      },
+    },
   },
-} satisfies Record<'script' | 'env' | 'console', ComponentProps<typeof MonacoEditor>['options']>;
+} satisfies Record<'script' | 'env' | 'console', ComponentProps<typeof MonacoEditor>>;
 
 function PreflightScriptContent() {
   const storage = useStorageContext({ nonNull: true });
@@ -88,6 +118,8 @@ function PreflightScriptContent() {
         toggle={toggleShowModal}
         scriptValue={script}
         onScriptValueChange={handleScriptChange}
+        envValue={env}
+        onEnvValueChange={handleEnvChange}
       />
       <div className="graphiql-doc-explorer-title flex items-center justify-between gap-4">
         Preflight Script
@@ -117,13 +149,12 @@ function PreflightScriptContent() {
       {enableScript && (
         <MonacoEditor
           height={128}
-          className="*:rounded-md *:bg-[hsla(var(--color-neutral),var(--alpha-background-light))] *:py-3 *:opacity-70"
-          defaultLanguage="javascript"
           value={script}
           onChange={handleScriptChange}
-          theme="vs-dark"
+          {...monacoProps.script}
+          className={classes.monacoMini}
           options={{
-            ...monacoOptions.script,
+            ...monacoProps.script.options,
             lineNumbers: 'off',
             readOnly: true,
           }}
@@ -139,12 +170,10 @@ function PreflightScriptContent() {
       <Subtitle>Define variables to use in your Headers</Subtitle>
       <MonacoEditor
         height={128}
-        className="*:rounded-md *:bg-[hsla(var(--color-neutral),var(--alpha-background-light))] *:py-3 *:opacity-70"
-        defaultLanguage="json"
         value={env}
         onChange={handleEnvChange}
-        theme="vs-dark"
-        options={monacoOptions.env}
+        {...monacoProps.env}
+        className={classes.monacoMini}
       />
     </>
   );
@@ -155,11 +184,15 @@ function PreflightScriptModal({
   toggle,
   scriptValue,
   onScriptValueChange,
+  envValue,
+  onEnvValueChange,
 }: {
   isOpen: boolean;
   toggle: () => void;
   scriptValue: string;
   onScriptValueChange: OnChange;
+  envValue: string;
+  onEnvValueChange: OnChange;
 }) {
   return (
     <Dialog open={isOpen} onOpenChange={toggle}>
@@ -187,36 +220,21 @@ function PreflightScriptModal({
               </Button>
             </div>
             <MonacoEditor
-              className="*:bg-[rgba(183,194,215,.07)] *:py-3"
-              defaultLanguage="javascript"
               value={scriptValue}
               onChange={onScriptValueChange}
-              theme="vs-dark"
-              options={monacoOptions.script}
+              {...monacoProps.script}
             />
           </div>
           <div className="flex flex-col">
             <Title className="p-2">Console output</Title>
-            <MonacoEditor
-              className="*:bg-[rgba(183,194,215,.07)] *:py-3"
-              defaultLanguage="javascript"
-              theme="vs-dark"
-              options={monacoOptions.console}
-            />
+            <MonacoEditor {...monacoProps.console} />
             <Title className="flex gap-2 p-2">
               Environment Variables
               <Badge className="text-xs" variant="outline">
                 JSON
               </Badge>
             </Title>
-            <MonacoEditor
-              className="*:bg-[rgba(183,194,215,.07)] *:py-3"
-              defaultLanguage="json"
-              // value={value}
-              // onChange={(newValue = '') => setValue(newValue)}
-              theme="vs-dark"
-              options={monacoOptions.env}
-            />
+            <MonacoEditor value={envValue} onChange={onEnvValueChange} {...monacoProps.env} />
           </div>
         </div>
         <DialogFooter className="items-center">
