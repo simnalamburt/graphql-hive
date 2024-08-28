@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { ComponentProps, useCallback, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,10 +9,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Subtitle, Title } from '@/components/ui/page';
 import { Switch } from '@/components/ui/switch';
 import { useToggle } from '@/lib/hooks';
-import { GraphiQLPlugin } from '@graphiql/react';
-import { Editor as MonacoEditor } from '@monaco-editor/react';
+import { GraphiQLPlugin, useStorageContext } from '@graphiql/react';
+import { Editor as MonacoEditor, OnChange } from '@monaco-editor/react';
 import { InfoCircledIcon, Pencil1Icon, TriangleRightIcon } from '@radix-ui/react-icons';
 
 export const preflightScriptPlugin: GraphiQLPlugin = {
@@ -30,22 +31,63 @@ export const preflightScriptPlugin: GraphiQLPlugin = {
       <rect width="192" height="160" x="32" y="48" rx="8.5" />
     </svg>
   ),
-  title: 'Preflight script',
+  title: 'Preflight Script',
   content: PreflightScriptContent,
 };
 
+const storageKey = {
+  script: 'preflightScript:script',
+  env: 'preflightScript:env',
+  disabled: 'preflightScript:disabled',
+};
+
+const monacoOptions = {
+  env: {
+    minimap: { enabled: false },
+    lineNumbers: 'off' as const,
+    tabSize: 2,
+  },
+  console: {
+    minimap: { enabled: false },
+    lineNumbers: 'off',
+    readOnly: true,
+  },
+  script: {
+    minimap: { enabled: false },
+  },
+} satisfies Record<'script' | 'env' | 'console', ComponentProps<typeof MonacoEditor>['options']>;
+
 function PreflightScriptContent() {
-  const [value, setValue] = useState("console.log('Hello world')");
-  const [showModal, toggleShowModal] = useToggle(true);
-  const [checked, setChecked] = useState(false);
+  const storage = useStorageContext({ nonNull: true });
+  const [script, setScript] = useState(() => storage.get(storageKey.script) ?? '');
+  const [env, setEnv] = useState(() => storage.get(storageKey.env) ?? '');
+  const [showModal, toggleShowModal] = useToggle();
+  const [enableScript, setEnableScript] = useState(
+    () => storage.get(storageKey.disabled) !== 'false',
+  );
+
+  const handleScriptChange: OnChange = useCallback((newValue = '') => {
+    setScript(newValue);
+    storage.set(storageKey.script, newValue);
+  }, []);
+
+  const handleEnvChange: OnChange = useCallback((newValue = '') => {
+    setEnv(newValue);
+    storage.set(storageKey.env, newValue);
+  }, []);
+
+  const handleScriptDisabledChange = useCallback((checked: boolean) => {
+    setEnableScript(checked);
+    storage.set(storageKey.disabled, String(checked));
+  }, []);
 
   return (
     <>
       <PreflightScriptModal
         isOpen={showModal}
         toggle={toggleShowModal}
-        value={value}
-        onChange={setValue}
+        scriptValue={script}
+        onScriptValueChange={handleScriptChange}
       />
       <div className="graphiql-doc-explorer-title flex items-center justify-between gap-4">
         Preflight Script
@@ -59,30 +101,51 @@ function PreflightScriptContent() {
           Edit
         </Button>
       </div>
-      <p className="text-sm text-gray-400">
+      <Subtitle>
         This script is run before each operation submitted, e.g. for automated authentication.
-      </p>
+      </Subtitle>
 
       <div className="flex items-center gap-2 text-sm">
-        <Switch checked={checked} onCheckedChange={setChecked} className="my-4" />
-        <span className="w-6">{checked ? 'ON' : 'OFF'}</span>
+        <Switch
+          checked={enableScript}
+          onCheckedChange={handleScriptDisabledChange}
+          className="my-4"
+        />
+        <span className="w-6">{enableScript ? 'ON' : 'OFF'}</span>
       </div>
 
-      {checked && (
+      {enableScript && (
         <MonacoEditor
-          height="auto"
-          className="h-32 *:rounded-md *:bg-[hsla(var(--color-neutral),var(--alpha-background-light))] *:py-3 *:opacity-70"
+          height={128}
+          className="*:rounded-md *:bg-[hsla(var(--color-neutral),var(--alpha-background-light))] *:py-3 *:opacity-70"
           defaultLanguage="javascript"
-          value={value}
-          onChange={(newValue = '') => setValue(newValue)}
+          value={script}
+          onChange={handleScriptChange}
           theme="vs-dark"
           options={{
-            minimap: { enabled: false },
+            ...monacoOptions.script,
             lineNumbers: 'off',
             readOnly: true,
           }}
         />
       )}
+
+      <Title className="mt-6 flex gap-2">
+        Environment variables{' '}
+        <Badge className="text-xs" variant="outline">
+          JSON
+        </Badge>
+      </Title>
+      <Subtitle>Define variables to use in your Headers</Subtitle>
+      <MonacoEditor
+        height={128}
+        className="*:rounded-md *:bg-[hsla(var(--color-neutral),var(--alpha-background-light))] *:py-3 *:opacity-70"
+        defaultLanguage="json"
+        value={env}
+        onChange={handleEnvChange}
+        theme="vs-dark"
+        options={monacoOptions.env}
+      />
     </>
   );
 }
@@ -90,11 +153,13 @@ function PreflightScriptContent() {
 function PreflightScriptModal({
   isOpen,
   toggle,
-  value,
-  onChange,
+  scriptValue,
+  onScriptValueChange,
 }: {
   isOpen: boolean;
   toggle: () => void;
+  scriptValue: string;
+  onScriptValueChange: OnChange;
 }) {
   return (
     <Dialog open={isOpen} onOpenChange={toggle}>
@@ -111,12 +176,12 @@ function PreflightScriptModal({
         <div className="grid h-[60vh] grid-cols-2 [&_section]:grow">
           <div className="flex flex-col">
             <div className="flex justify-between p-2">
-              <div className="flex gap-2">
+              <Title className="flex gap-2">
                 Script Editor
-                <Badge className="text-xs" variant="gray">
+                <Badge className="text-xs" variant="outline">
                   JavaScript
                 </Badge>
-              </div>
+              </Title>
               <Button variant="orangeLink" size="icon-sm" className="size-auto">
                 <TriangleRightIcon className="shrink-0" /> Run Script
               </Button>
@@ -124,41 +189,33 @@ function PreflightScriptModal({
             <MonacoEditor
               className="*:bg-[rgba(183,194,215,.07)] *:py-3"
               defaultLanguage="javascript"
-              value={value}
-              onChange={onChange}
+              value={scriptValue}
+              onChange={onScriptValueChange}
               theme="vs-dark"
-              options={{
-                minimap: { enabled: false },
-              }}
+              options={monacoOptions.script}
             />
           </div>
           <div className="flex flex-col">
-            <div className="p-2">Console output</div>
+            <Title className="p-2">Console output</Title>
             <MonacoEditor
               className="*:bg-[rgba(183,194,215,.07)] *:py-3"
               defaultLanguage="javascript"
-              // value={value}
-              // onChange={(newValue = '') => setValue(newValue)}
               theme="vs-dark"
-              options={{
-                minimap: { enabled: false },
-              }}
+              options={monacoOptions.console}
             />
-            <div className="flex gap-2 p-2">
+            <Title className="flex gap-2 p-2">
               Environment Variables
-              <Badge className="text-xs" variant="gray">
+              <Badge className="text-xs" variant="outline">
                 JSON
               </Badge>
-            </div>
+            </Title>
             <MonacoEditor
               className="*:bg-[rgba(183,194,215,.07)] *:py-3"
               defaultLanguage="json"
               // value={value}
               // onChange={(newValue = '') => setValue(newValue)}
               theme="vs-dark"
-              options={{
-                minimap: { enabled: false },
-              }}
+              options={monacoOptions.env}
             />
           </div>
         </div>
