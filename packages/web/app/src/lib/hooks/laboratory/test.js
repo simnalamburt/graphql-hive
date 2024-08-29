@@ -39,24 +39,6 @@ var __awaiter =
       step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
   };
-var __rest =
-  (this && this.__rest) ||
-  function (s, e) {
-    var t = {};
-    for (var p in s) {
-      if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0) {
-        t[p] = s[p];
-      }
-    }
-    if (s != null && typeof Object.getOwnPropertySymbols === 'function') {
-      for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
-        if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i])) {
-          t[p[i]] = s[p[i]];
-        }
-      }
-    }
-    return t;
-  };
 
 function isValidHeaders(value) {
   return (
@@ -64,73 +46,14 @@ function isValidHeaders(value) {
   );
 }
 
-// initial list comes from https://github.com/postmanlabs/uniscope/blob/develop/lib/allowed-globals.js
-const ALLOWED_GLOBALS = [
-  'Array',
-  'ArrayBuffer',
-  'Atomics',
-  'BigInt',
-  'BigInt64Array',
-  'BigUint64Array',
-  'Boolean',
-  'DataView',
-  'Date',
-  'Error',
-  'EvalError',
-  'Float32Array',
-  'Float64Array',
-  'Function',
-  'Infinity',
-  'Int16Array',
-  'Int32Array',
-  'Int8Array',
-  'JSON',
-  'Map',
-  'Math',
-  'NaN',
-  'Number',
-  'Object',
-  'Promise',
-  'Proxy',
-  'RangeError',
-  'ReferenceError',
-  'Reflect',
-  'RegExp',
-  'Set',
-  'SharedArrayBuffer',
-  'String',
-  'Symbol',
-  'SyntaxError',
-  'TypeError',
-  'URIError',
-  'Uint16Array',
-  'Uint32Array',
-  'Uint8Array',
-  'Uint8ClampedArray',
-  'WeakMap',
-  'WeakSet',
-  'decodeURI',
-  'decodeURIComponent',
-  'encodeURI',
-  'encodeURIComponent',
-  'escape',
-  'isFinite',
-  'isNaN',
-  'parseFloat',
-  'parseInt',
-  'undefined',
-  'unescape',
-  'btoa',
-  'atob',
-];
-
 function getValidEnvVariable(value) {
   if (Array.isArray(value)) {
     return value.map(v => {
       var _a;
       return (_a = getValidEnvVariable(v)) !== null && _a !== void 0 ? _a : null;
     });
-  } else if (typeof value === 'object' && value) {
+  }
+  if (typeof value === 'object' && value) {
     return Object.fromEntries(
       Object.entries(value)
         .map(_ref => {
@@ -144,7 +67,6 @@ function getValidEnvVariable(value) {
     return value;
   }
   // TODO; replace this with the logging proxy so this can show up in the UI
-  // eslint-disable-next-line no-console
   console.log(
     'You tried to set a non primitive type in env variables, only string, boolean, number, null, object, or arrays are allowed in env variables. The value has been filtered out',
   );
@@ -184,7 +106,6 @@ export function execute(_ref2) {
     ];
     // generate list of all in scope variables, we do getOwnPropertyNames and `for in` because each contain slightly different sets of keys
     const allGlobalKeys = Object.getOwnPropertyNames(globalThis);
-    // eslint-disable-next-line no-restricted-syntax,guard-for-in
     for (const key in globalThis) {
       allGlobalKeys.push(key);
     }
@@ -195,9 +116,9 @@ export function execute(_ref2) {
         // because global is blocked, even if this was in the worker it's still wouldn't be available because it's not a valid variable name
         !key.includes('-') &&
         !allowedGlobals.includes(key) &&
-        // window has references as indexes on the globalThis such as `globalThis[0]`, numbers are not valid arguments so we need to filter these out
-        isNaN(Number(key)) &&
-        // @ is not a valid argument name beginning character so we don't need to block it and including it will cause a syntax error
+        // window has references as indexes on the globalThis such as `globalThis[0]`, numbers are not valid arguments, so we need to filter these out
+        Number.isNaN(Number(key)) &&
+        // @ is not a valid argument name beginning character, so we don't need to block it and including it will cause a syntax error
         // only example currently is @wry/context which is a dep of @apollo/client and adds @wry/context:Slot
         key.charAt(0) !== '@'
       );
@@ -208,17 +129,8 @@ export function execute(_ref2) {
         for (var _len = arguments.length, msgs = new Array(_len), _key = 0; _key < _len; _key++) {
           msgs[_key] = arguments[_key];
         }
-        // eslint-disable-next-line no-console
         console[level](...msgs);
         log(level, ...msgs.map(msg => String(msg)));
-      };
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function deprecatedWrapper(msg, func) {
-      return function () {
-        log('warn', msg);
-        return func(...arguments);
       };
     }
 
@@ -277,7 +189,7 @@ export function execute(_ref2) {
           scope !== 'sandbox' &&
           scope !== undefined
         ) {
-          throw new Error(`invalid scope, must be one of 'personal', 'shared', or 'sandbox'`);
+          throw new Error("invalid scope, must be one of 'personal', 'shared', or 'sandbox'");
         } else if (typeof graphRef !== 'string' && graphRef !== null && graphRef !== undefined) {
           throw new Error('invalid graphRef');
         } else if (typeof collectionName !== 'string') {
@@ -327,55 +239,9 @@ export function execute(_ref2) {
       prompt,
       oauth2Request,
     });
-    const deprecatedApi = Object.freeze({
-      environment: {
-        get: deprecatedWrapper(
-          'pm.environment.get is deprecated, please use explorer.environment.get instead',
-          key => {
-            return Object.freeze(workingEnvironmentVariables[key]);
-          },
-        ),
-        set: deprecatedWrapper(
-          'pm.environment.set is deprecated, please use explorer.environment.set instead',
-          (key, value) => {
-            const validValue = getValidEnvVariable(value);
-            if (validValue === undefined) {
-              delete workingEnvironmentVariables[key];
-            } else {
-              workingEnvironmentVariables[key] = validValue;
-            }
-          },
-        ),
-      },
-      sendRequest: deprecatedWrapper(
-        'pm.sendRequest is deprecated, please use explorer.fetch instead',
-        (_ref4, callback) => {
-          let { url, body, headers, method, credentials } = _ref4;
-          inflightPromises.push(
-            fetch(url, {
-              body,
-              headers,
-              method,
-              credentials,
-            }).then(
-              response => {
-                callback(
-                  undefined,
-                  Object.assign(Object.assign({}, response), {
-                    json: () => JSON.parse(response.body),
-                  }),
-                );
-              },
-              err => callback(err),
-            ),
-          );
-        },
-      ),
-    });
     yield Function.apply({}, [
       'explorer',
       'console',
-      'pm',
       // spreading all the variables we want to block creates an argument that shadows the their names, any attempt to access them will result in `undefined`
       ...blockedGlobals,
       // Wrap the users script in an async IIFE to allow the use of top level await
@@ -386,11 +252,10 @@ export function execute(_ref2) {
       })()
     `,
       // Bind the function to a null constructor object to prevent `this` leaking scope in
-    ]).bind(Object.create(null))(explorerApi, consoleApi, deprecatedApi);
+    ]).bind(Object.create(null))(explorerApi, consoleApi);
     // For the deprecated callback send request, we need to make sure all promises have settled before returning
     while (inflightPromises.length) {
       // Loop over promises so if new promises are added during waiting, they will also be awaited
-      // eslint-disable-next-line no-await-in-loop
       yield inflightPromises.pop();
     }
     return {
