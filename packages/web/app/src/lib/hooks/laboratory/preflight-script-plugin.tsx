@@ -17,7 +17,7 @@ import { useToggle } from '@/lib/hooks';
 import { GraphiQLPlugin, useStorageContext } from '@graphiql/react';
 import { Editor as MonacoEditor, OnChange, OnMount } from '@monaco-editor/react';
 import { InfoCircledIcon, Pencil1Icon, TriangleRightIcon } from '@radix-ui/react-icons';
-import MyWorker from './preflightWorker.worker?worker';
+import MyWorker from './preflight-script.worker?worker';
 
 const worker = new MyWorker();
 
