@@ -1,32 +1,6 @@
 import { ALLOWED_GLOBALS } from './allowed-globals';
 import { isJSONPrimitive } from './json';
 
-function getValidEnvVariable(value) {
-  if (Array.isArray(value)) {
-    return value.map(v => {
-      var _a;
-      return (_a = getValidEnvVariable(v)) !== null && _a !== void 0 ? _a : null;
-    });
-  }
-  if (typeof value === 'object' && value) {
-    return Object.fromEntries(
-      Object.entries(value)
-        .map(_ref => {
-          let [key, v] = _ref;
-          return [key, getValidEnvVariable(v)];
-        })
-        .filter(v => v[1] !== undefined),
-    );
-  }
-  if (isJSONPrimitive(value)) {
-    return value;
-  }
-  // TODO; replace this with the logging proxy so this can show up in the UI
-  console.log(
-    'You tried to set a non primitive type in env variables, only string, boolean, number, null, object, or arrays are allowed in env variables. The value has been filtered out',
-  );
-}
-
 export async function execute({
   environmentVariables,
   script,
@@ -72,10 +46,37 @@ export async function execute({
     );
   });
 
-  const messages = [];
+  const messages: (string | Error)[] = [];
 
-  function log(level: string, ...msgs: unknown[]) {
-    messages.push(`${level}: ${msgs.join(' ')}`);
+  const log =
+    (level: string) =>
+    (...args: unknown[]) => {
+      messages.push(`${level}: ${args.join(' ')}`);
+    };
+
+  function getValidEnvVariable(value) {
+    if (Array.isArray(value)) {
+      return value.map(v => {
+        var _a;
+        return (_a = getValidEnvVariable(v)) !== null && _a !== void 0 ? _a : null;
+      });
+    }
+    if (typeof value === 'object' && value) {
+      return Object.fromEntries(
+        Object.entries(value)
+          .map(_ref => {
+            let [key, v] = _ref;
+            return [key, getValidEnvVariable(v)];
+          })
+          .filter(v => v[1] !== undefined),
+      );
+    }
+    if (isJSONPrimitive(value)) {
+      return value;
+    }
+    consoleApi.log(
+      'You tried to set a non primitive type in env variables, only string, boolean, number, null, object, or arrays are allowed in env variables. The value has been filtered out',
+    );
   }
 
   function getConsoleProxyLog(level: string) {
@@ -88,9 +89,9 @@ export async function execute({
   }
 
   const consoleApi = Object.freeze({
-    log: getConsoleProxyLog('log'),
-    warn: getConsoleProxyLog('warn'),
-    error: getConsoleProxyLog('error'),
+    log: log('log'),
+    warn: log('warn'),
+    error: log('error'),
   });
 
   const labApi = Object.freeze({
@@ -129,8 +130,12 @@ export async function execute({
 })()`,
       // Bind the function to a null constructor object to prevent `this` leaking scope in
     ]).bind(Object.create(null))(labApi, consoleApi);
-  } catch (error: any) {
-    messages.push(`${error.constructor.name}: ${error.message}`);
+  } catch (error) {
+    if (error instanceof Error) {
+      messages.push(error);
+    } else {
+      throw error;
+    }
   }
 
   return {

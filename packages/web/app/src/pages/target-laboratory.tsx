@@ -1,4 +1,4 @@
-import { ReactElement, useCallback, useMemo, useState } from 'react';
+import { ComponentProps, ReactElement, useCallback, useMemo, useState } from 'react';
 import { cx } from 'class-variance-authority';
 import clsx from 'clsx';
 import { GraphiQL } from 'graphiql';
@@ -24,7 +24,6 @@ import { QueryError } from '@/components/ui/query-error';
 import { ToggleGroup, ToggleGroupItem } from '@/components/v2/toggle-group';
 import { graphql } from '@/gql';
 import { useClipboard, useNotifications, useToggle } from '@/lib/hooks';
-import { preflightScriptPlugin } from '@/lib/preflight-sandbox/graphiql-plugin';
 import { useCollections } from '@/lib/hooks/laboratory/use-collections';
 import { useCurrentOperation } from '@/lib/hooks/laboratory/use-current-operation';
 import {
@@ -34,6 +33,7 @@ import {
 import { useSyncOperationState } from '@/lib/hooks/laboratory/use-sync-operation-state';
 import { useOperationFromQueryString } from '@/lib/hooks/laboratory/useOperationFromQueryString';
 import { useResetState } from '@/lib/hooks/use-reset-state';
+import { executeScript, preflightScriptPlugin } from '@/lib/preflight-sandbox/graphiql-plugin';
 import { cn } from '@/lib/utils';
 import { explorerPlugin } from '@graphiql/plugin-explorer';
 import {
@@ -243,6 +243,41 @@ function Save(props: {
   );
 }
 
+const onModifyHeaders: ComponentProps<typeof GraphiQL>['onModifyHeaders'] = async headers => {
+  const { environmentVariables, logs } = await executeScript();
+  console.log('onModifyHeaders headers', headers);
+  console.log('onModifyHeaders environmentVariables', environmentVariables);
+  for (const logOrError of logs) {
+    if (logOrError instanceof Error) {
+      const formatError = JSON.stringify(
+        {
+          name: logOrError.constructor.name,
+          message: logOrError.message,
+        },
+        null,
+        2,
+      );
+
+      throw new Error(`Error during preflight script execution:\n\n${formatError}`);
+    }
+  }
+
+  return Object.fromEntries(
+    Object.entries(headers).map(([key, value]) => {
+      if (typeof value === 'string') {
+        // Replace all occurrences of `{{keyName}}` strings only if key exists in `environmentVariables`
+        // + to not match empty `{{}}`
+        value = value.replaceAll(/{{(?<keyName>.+?)}}/g, (originalString, envKey) => {
+          return Object.hasOwn(environmentVariables, envKey)
+            ? environmentVariables[envKey]
+            : originalString;
+        });
+      }
+      return [key, value];
+    }),
+  );
+};
+
 function LaboratoryPageContent(props: {
   organizationId: string;
   projectId: string;
@@ -426,7 +461,9 @@ function LaboratoryPageContent(props: {
           .graphiql-dialog a {
             --color-primary: 40, 89%, 60% !important;
           }
-
+          .graphiql-container {
+            overflow: unset; /* remove default overflow */
+          }
           .graphiql-container,
           .graphiql-dialog,
           .CodeMirror-info {
@@ -446,14 +483,14 @@ function LaboratoryPageContent(props: {
       {!query.fetching && !query.stale && (
         <GraphiQL
           fetcher={fetcher}
-          showPersistHeadersSettings={false}
-          shouldPersistHeaders={false}
+          shouldPersistHeaders
           plugins={plugins}
           visiblePlugin={operationCollectionsPlugin}
           schema={schema}
           forcedTheme="dark"
           className={isFullScreen ? 'fixed inset-0 bg-[#030711]' : ''}
           onTabChange={handleTabChange}
+          onModifyHeaders={onModifyHeaders}
         >
           <GraphiQL.Logo>
             <Button

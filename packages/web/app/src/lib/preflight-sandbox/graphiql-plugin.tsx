@@ -95,6 +95,29 @@ const monacoProps = {
   },
 } satisfies Record<'script' | 'env' | 'console', ComponentProps<typeof MonacoEditor>>;
 
+type PreflightScriptResult = {
+  logs: string[];
+  environmentVariables: Record<string, unknown>;
+};
+
+export async function executeScript(
+  script = localStorage.getItem(`graphiql:${storageKey.script}`)!,
+  env = localStorage.getItem(`graphiql:${storageKey.env}`)!,
+): Promise<PreflightScriptResult> {
+  preflightWorker.postMessage({ script, environmentVariables: env ? JSON.parse(env) : {} });
+
+  return new Promise(resolve => {
+    preflightWorker.onmessage = (event: MessageEvent<PreflightScriptResult>) => {
+      const { logs, environmentVariables } = event.data;
+      resolve({ logs, environmentVariables });
+    };
+    preflightWorker.onerror = error => {
+      // Using `warn` instead `error` - to not send to Sentry
+      console.warn('Error from preflight worker', error);
+    };
+  });
+}
+
 function PreflightScriptContent() {
   const storage = useStorageContext({ nonNull: true });
   const [script, setScript] = useState(() => storage.get(storageKey.script) ?? '');
@@ -205,39 +228,19 @@ function PreflightScriptModal({
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const [logs, setLogs] = useState('');
 
-  const handleEditorDidMount: OnMount = useCallback((editor, monaco) => {
+  const handleEditorDidMount: OnMount = useCallback(editor => {
     editorRef.current = editor;
   }, []);
 
   const handleRunScript = useCallback(async () => {
-    const script = editorRef.current?.getValue() ?? '';
+    const rawScript = editorRef.current?.getValue() ?? '';
 
-    preflightWorker.onmessage = (
-      event: MessageEvent<{
-        logs: string[];
-        environmentVariables: Record<string, unknown>;
-      }>,
-    ) => {
-      const { logs, environmentVariables } = event.data;
-      setLogs(logs.join('\n'));
-      onEnvValueChange(
-        JSON.stringify(
-          {
-            ...JSON.parse(envValue),
-            ...environmentVariables,
-          },
-          null,
-          2,
-        ),
-      );
-    };
-    preflightWorker.onerror = error => {
-      // Warn to not send to Sentry
-      console.warn('Error from preflight worker', error);
-    };
+    const { logs, environmentVariables } = await executeScript(rawScript, envValue);
+    setLogs(logs.join('\n'));
 
-    preflightWorker.postMessage({ script, environmentVariables: {} });
-  }, []);
+    // @ts-expect-error -- we don't care about 2nd argument
+    onEnvValueChange(JSON.stringify(environmentVariables, null, 2));
+  }, [envValue]);
 
   return (
     <Dialog open={isOpen} onOpenChange={toggle}>
@@ -294,7 +297,9 @@ function PreflightScriptModal({
             Changes made to this Preflight Script will apply to all users on your team using this
             variant.
           </p>
-          <Button type="button">Close</Button>
+          <Button type="button" onClick={toggle}>
+            Close
+          </Button>
           <Button type="button" variant="primary">
             Save
           </Button>
