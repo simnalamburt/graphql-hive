@@ -27,12 +27,10 @@ function getValidEnvVariable(value) {
   );
 }
 
-export function execute({
-  log,
+export async function execute({
   environmentVariables,
   script,
 }: {
-  log: (...args: unknown[]) => void;
   environmentVariables: Record<string, string>;
   script: string;
 }) {
@@ -40,7 +38,7 @@ export function execute({
   // Confirm the build pipeline worked and this is running inside a worker and not the main thread
   if (!inWorker) {
     throw new Error(
-      'Preflight and postflight scripts must always be run in web workers, this is a problem with studio not user input',
+      'Preflight and postflight scripts must always be run in web workers, this is a problem with laboratory not user input',
     );
   }
 
@@ -74,23 +72,28 @@ export function execute({
     );
   });
 
+  const messages = [];
+
+  function log(level: string, ...msgs: unknown[]) {
+    messages.push(`${level}: ${msgs.join(' ')}`);
+  }
+
   function getConsoleProxyLog(level: string) {
     return function () {
       for (var _len = arguments.length, msgs = new Array(_len), _key = 0; _key < _len; _key++) {
         msgs[_key] = arguments[_key];
       }
-      console[level](...msgs);
       log(level, ...msgs.map(msg => String(msg)));
     };
   }
 
-  const consoleApi = {
+  const consoleApi = Object.freeze({
     log: getConsoleProxyLog('log'),
     warn: getConsoleProxyLog('warn'),
     error: getConsoleProxyLog('error'),
-  };
+  });
 
-  const explorerApi = {
+  const labApi = Object.freeze({
     environment: {
       get(key: string) {
         return Object.freeze(workingEnvironmentVariables[key]);
@@ -104,29 +107,37 @@ export function execute({
         }
       },
     },
-    // fetch(href, options) {
-    //   const fetchPromise = fetch(href, options).then(response =>
-    //     Object.assign(Object.assign({}, response), {
-    //       json: () => JSON.parse(response.body),
-    //     }),
-    //   );
-    //   // inflightPromises.push(fetchPromise);
-    //   return fetchPromise;
-    // },
-  };
+    fetch(href, options) {
+      return fetch(href, options).then(response =>
+        Object.assign(Object.assign({}, response), {
+          json: () => JSON.parse(response.body),
+        }),
+      );
+    },
+  });
 
-  return Function.apply({}, [
-    'explorer',
-    'console',
-    // spreading all the variables we want to block creates an argument that shadows the their names, any attempt to access them will result in `undefined`
-    ...blockedGlobals,
-    // Wrap the users script in an async IIFE to allow the use of top level await
-    `
-      return (async () => {
-        "use strict";
-        ${script};
-      })()
-    `,
-    // Bind the function to a null constructor object to prevent `this` leaking scope in
-  ]).bind(Object.create(null))(explorerApi, consoleApi);
+  try {
+    await Function.apply({}, [
+      'lab',
+      'console',
+      // spreading all the variables we want to block creates an argument that shadows the their names, any attempt to access them will result in `undefined`
+      ...blockedGlobals,
+      // Wrap the users script in an async IIFE to allow the use of top level await
+      `return (async () => {
+  "use strict";
+  ${script}
+})()`,
+      // Bind the function to a null constructor object to prevent `this` leaking scope in
+    ]).bind(Object.create(null))(labApi, consoleApi);
+  } catch (error: any) {
+    messages.push(`${error.constructor.name}: ${error.message}`);
+  }
+
+  return {
+    environmentVariables: workingEnvironmentVariables,
+    logs: messages,
+    // additionalScriptsCalled,
+    // additionalOperationsCalled,
+    // maxScriptDepth,
+  };
 }

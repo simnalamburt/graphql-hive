@@ -1,5 +1,6 @@
-import { ComponentProps, useCallback, useState } from 'react';
+import { ComponentProps, useCallback, useRef, useState } from 'react';
 import { clsx } from 'clsx';
+import type { editor } from 'monaco-editor';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,8 +15,11 @@ import { Subtitle, Title } from '@/components/ui/page';
 import { Switch } from '@/components/ui/switch';
 import { useToggle } from '@/lib/hooks';
 import { GraphiQLPlugin, useStorageContext } from '@graphiql/react';
-import { Editor as MonacoEditor, OnChange } from '@monaco-editor/react';
+import { Editor as MonacoEditor, OnChange, OnMount } from '@monaco-editor/react';
 import { InfoCircledIcon, Pencil1Icon, TriangleRightIcon } from '@radix-ui/react-icons';
+import MyWorker from './preflightWorker.worker?worker';
+
+const worker = new MyWorker();
 
 export const preflightScriptPlugin: GraphiQLPlugin = {
   icon: () => (
@@ -47,42 +51,46 @@ const classes = {
   monacoMini: clsx('h-32 *:rounded-md *:bg-[#10151f]'),
 };
 
+const sharedMonacoProps = {
+  theme: 'vs-dark',
+  className: classes.monaco,
+  options: {
+    minimap: { enabled: false },
+    padding: {
+      top: 10,
+    },
+    scrollbar: {
+      horizontalScrollbarSize: 6,
+      verticalScrollbarSize: 6,
+    },
+  },
+} satisfies ComponentProps<typeof MonacoEditor>;
+
 const monacoProps = {
   env: {
-    theme: 'vs-dark',
+    ...sharedMonacoProps,
     defaultLanguage: 'json',
-    className: classes.monaco,
     options: {
-      minimap: { enabled: false },
-      padding: {
-        top: 10,
-      },
+      ...sharedMonacoProps.options,
       lineNumbers: 'off',
       tabSize: 2,
     },
   },
   console: {
-    theme: 'vs-dark',
-    defaultLanguage: 'javascript',
-    className: classes.monaco,
+    ...sharedMonacoProps,
+    defaultLanguage: 'bash',
     options: {
-      minimap: { enabled: false },
-      padding: {
-        top: 10,
-      },
+      ...sharedMonacoProps.options,
       lineNumbers: 'off',
       readOnly: true,
     },
   },
   script: {
+    ...sharedMonacoProps,
     theme: 'vs-dark',
     defaultLanguage: 'javascript',
-    className: classes.monaco,
     options: {
-      minimap: { enabled: false },
-      padding: {
-        top: 10,
-      },
+      ...sharedMonacoProps.options,
     },
   },
 } satisfies Record<'script' | 'env' | 'console', ComponentProps<typeof MonacoEditor>>;
@@ -194,9 +202,46 @@ function PreflightScriptModal({
   envValue: string;
   onEnvValueChange: OnChange;
 }) {
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const [logs, setLogs] = useState('');
+
+  const handleEditorDidMount: OnMount = useCallback((editor, monaco) => {
+    editorRef.current = editor;
+  }, []);
+
+  const handleRunScript = useCallback(async () => {
+    const script = editorRef.current?.getValue() ?? '';
+
+    worker.onmessage = (
+      event: MessageEvent<{
+        logs: string[];
+        environmentVariables: Record<string, unknown>;
+      }>,
+    ) => {
+      const { logs, environmentVariables } = event.data;
+      setLogs(logs.join('\n'));
+      onEnvValueChange(
+        JSON.stringify(
+          {
+            ...JSON.parse(envValue),
+            ...environmentVariables,
+          },
+          null,
+          2,
+        ),
+      );
+    };
+    worker.onerror = error => {
+      // Warn to not send to Sentry
+      console.warn('error from worker', error);
+    };
+
+    worker.postMessage({ script, environmentVariables: {} });
+  }, []);
+
   return (
     <Dialog open={isOpen} onOpenChange={toggle}>
-      <DialogContent className="w-11/12 !max-w-[unset] xl:w-4/5">
+      <DialogContent className="w-11/12 max-w-[unset] xl:w-4/5">
         <DialogHeader>
           <DialogTitle>Edit your Preflight Script</DialogTitle>
           <DialogDescription>
@@ -215,19 +260,25 @@ function PreflightScriptModal({
                   JavaScript
                 </Badge>
               </Title>
-              <Button variant="orangeLink" size="icon-sm" className="size-auto">
+              <Button
+                variant="orangeLink"
+                size="icon-sm"
+                className="size-auto"
+                onClick={handleRunScript}
+              >
                 <TriangleRightIcon className="shrink-0" /> Run Script
               </Button>
             </div>
             <MonacoEditor
               value={scriptValue}
               onChange={onScriptValueChange}
+              onMount={handleEditorDidMount}
               {...monacoProps.script}
             />
           </div>
           <div className="flex flex-col">
             <Title className="p-2">Console output</Title>
-            <MonacoEditor {...monacoProps.console} />
+            <MonacoEditor value={logs} {...monacoProps.console} />
             <Title className="flex gap-2 p-2">
               Environment Variables
               <Badge className="text-xs" variant="outline">
