@@ -17,9 +17,9 @@ import { useToggle } from '@/lib/hooks';
 import { GraphiQLPlugin, useStorageContext } from '@graphiql/react';
 import { Editor as MonacoEditor, OnChange, OnMount } from '@monaco-editor/react';
 import { InfoCircledIcon, Pencil1Icon, TriangleRightIcon } from '@radix-ui/react-icons';
-import MyWorker from './preflight-script.worker?worker';
+import PreflightWorker from './worker?worker';
 
-const worker = new MyWorker();
+const preflightWorker = new PreflightWorker();
 
 export const preflightScriptPlugin: GraphiQLPlugin = {
   icon: () => (
@@ -212,7 +212,7 @@ function PreflightScriptModal({
   const handleRunScript = useCallback(async () => {
     const script = editorRef.current?.getValue() ?? '';
 
-    worker.onmessage = (
+    preflightWorker.onmessage = (
       event: MessageEvent<{
         logs: string[];
         environmentVariables: Record<string, unknown>;
@@ -231,12 +231,12 @@ function PreflightScriptModal({
         ),
       );
     };
-    worker.onerror = error => {
+    preflightWorker.onerror = error => {
       // Warn to not send to Sentry
-      console.warn('error from worker', error);
+      console.warn('Error from preflight worker', error);
     };
 
-    worker.postMessage({ script, environmentVariables: {} });
+    preflightWorker.postMessage({ script, environmentVariables: {} });
   }, []);
 
   return (
