@@ -54,6 +54,8 @@ export const ALLOWED_GLOBALS = [
   'parseInt',
   'undefined',
   'unescape',
+  // more global variables
   'btoa',
   'atob',
+  'fetch'
 ];

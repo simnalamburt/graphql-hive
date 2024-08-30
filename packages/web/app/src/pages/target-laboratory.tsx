@@ -245,8 +245,6 @@ function Save(props: {
 
 const onModifyHeaders: ComponentProps<typeof GraphiQL>['onModifyHeaders'] = async headers => {
   const { environmentVariables, logs } = await executeScript();
-  console.log('onModifyHeaders headers', headers);
-  console.log('onModifyHeaders environmentVariables', environmentVariables);
   for (const logOrError of logs) {
     if (logOrError instanceof Error) {
       const formatError = JSON.stringify(

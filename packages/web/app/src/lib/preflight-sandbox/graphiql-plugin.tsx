@@ -1,4 +1,4 @@
-import { ComponentProps, useCallback, useRef, useState } from 'react';
+import { ComponentProps, useCallback, useEffect, useRef, useState } from 'react';
 import { clsx } from 'clsx';
 import type { editor } from 'monaco-editor';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +16,14 @@ import { Switch } from '@/components/ui/switch';
 import { useToggle } from '@/lib/hooks';
 import { GraphiQLPlugin, useStorageContext } from '@graphiql/react';
 import { Editor as MonacoEditor, OnChange, OnMount } from '@monaco-editor/react';
-import { InfoCircledIcon, Pencil1Icon, TriangleRightIcon } from '@radix-ui/react-icons';
+import {
+  CrossCircledIcon,
+  ExclamationTriangleIcon,
+  InfoCircledIcon,
+  Pencil1Icon,
+  TriangleRightIcon,
+} from '@radix-ui/react-icons';
+import type { LogMessage } from './execute-script';
 import PreflightWorker from './worker?worker';
 
 const preflightWorker = new PreflightWorker();
@@ -49,6 +56,7 @@ const storageKey = {
 const classes = {
   monaco: clsx('*:bg-[#10151f]'),
   monacoMini: clsx('h-32 *:rounded-md *:bg-[#10151f]'),
+  icon: clsx('absolute -left-5 top-px'),
 };
 
 const sharedMonacoProps = {
@@ -76,15 +84,6 @@ const monacoProps = {
       tabSize: 2,
     },
   },
-  console: {
-    ...sharedMonacoProps,
-    defaultLanguage: 'bash',
-    options: {
-      ...sharedMonacoProps.options,
-      lineNumbers: 'off',
-      readOnly: true,
-    },
-  },
   script: {
     ...sharedMonacoProps,
     theme: 'vs-dark',
@@ -93,10 +92,10 @@ const monacoProps = {
       ...sharedMonacoProps.options,
     },
   },
-} satisfies Record<'script' | 'env' | 'console', ComponentProps<typeof MonacoEditor>>;
+} satisfies Record<'script' | 'env', ComponentProps<typeof MonacoEditor>>;
 
 type PreflightScriptResult = {
-  logs: string[];
+  logs: LogMessage[];
   environmentVariables: Record<string, unknown>;
 };
 
@@ -226,7 +225,9 @@ function PreflightScriptModal({
   onEnvValueChange: OnChange;
 }) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
-  const [logs, setLogs] = useState('');
+  const [logs, setLogs] = useState<(LogMessage | { type: 'separator' })[]>([]);
+
+  const consoleRef = useRef<HTMLElement>(null);
 
   const handleEditorDidMount: OnMount = useCallback(editor => {
     editorRef.current = editor;
@@ -236,11 +237,20 @@ function PreflightScriptModal({
     const rawScript = editorRef.current?.getValue() ?? '';
 
     const { logs, environmentVariables } = await executeScript(rawScript, envValue);
-    setLogs(logs.join('\n'));
+    setLogs(prev =>
+      // Add separator only we already have logs
+      prev.length ? [...prev, { type: 'separator' }, ...logs] : logs,
+    );
 
     // @ts-expect-error -- we don't care about 2nd argument
     onEnvValueChange(JSON.stringify(environmentVariables, null, 2));
   }, [envValue]);
+
+  useEffect(() => {
+    const consoleEl = consoleRef.current;
+
+    consoleEl?.scroll({ top: consoleEl.scrollHeight, behavior: 'smooth' });
+  }, [logs]);
 
   return (
     <Dialog open={isOpen} onOpenChange={toggle}>
@@ -277,18 +287,68 @@ function PreflightScriptModal({
               onChange={onScriptValueChange}
               onMount={handleEditorDidMount}
               {...monacoProps.script}
+              options={{
+                ...monacoProps.script.options,
+                wordWrap: 'wordWrapColumn',
+              }}
             />
           </div>
-          <div className="flex flex-col">
+          <div className="flex h-[inherit] flex-col">
             <Title className="p-2">Console output</Title>
-            <MonacoEditor value={logs} {...monacoProps.console} />
+            <section
+              ref={consoleRef}
+              className='h-1/2 overflow-hidden overflow-y-scroll bg-[#10151f] py-2.5 pl-[26px] pr-2.5 font-[Menlo,Monaco,"Courier_New",monospace] text-xs/[18px]'
+            >
+              {logs.map((log, index) => {
+                let type = '';
+                if (log instanceof Error) {
+                  type = 'error';
+                  log = `${log.constructor.name}: ${log.message}`;
+                }
+                if (typeof log === 'string') {
+                  type ||= log.split(':')[0].toLowerCase();
+
+                  const ComponentToUse = {
+                    error: CrossCircledIcon,
+                    warn: ExclamationTriangleIcon,
+                    info: InfoCircledIcon,
+                  }[type];
+
+                  return (
+                    <div
+                      key={index}
+                      className={clsx(
+                        'relative',
+                        {
+                          error: 'text-red-500',
+                          warn: 'text-yellow-500',
+                          info: 'text-green-500',
+                        }[type],
+                      )}
+                    >
+                      {ComponentToUse && <ComponentToUse className={classes.icon} />}
+                      {log}
+                    </div>
+                  );
+                }
+                return <hr key={index} className="my-2 border-dashed border-current" />;
+              })}
+            </section>
             <Title className="flex gap-2 p-2">
               Environment Variables
               <Badge className="text-xs" variant="outline">
                 JSON
               </Badge>
             </Title>
-            <MonacoEditor value={envValue} onChange={onEnvValueChange} {...monacoProps.env} />
+            <MonacoEditor
+              value={envValue}
+              onChange={onEnvValueChange}
+              {...monacoProps.env}
+              options={{
+                ...monacoProps.env.options,
+                wordWrap: 'wordWrapColumn',
+              }}
+            />
           </div>
         </div>
         <DialogFooter className="items-center">
