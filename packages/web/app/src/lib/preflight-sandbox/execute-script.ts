@@ -16,7 +16,7 @@ export async function execute({
   // Confirm the build pipeline worked and this is running inside a worker and not the main thread
   if (!inWorker) {
     throw new Error(
-      'Preflight and postflight scripts must always be run in web workers, this is a problem with laboratory not user input',
+      'Preflight script must always be run in web workers, this is a problem with laboratory not user input',
     );
   }
 

@@ -243,7 +243,9 @@ function Save(props: {
   );
 }
 
-const onModifyHeaders: ComponentProps<typeof GraphiQL>['onModifyHeaders'] = async headers => {
+const onModifyHeaders: ComponentProps<typeof GraphiQL>['onModifyHeaders'] = async (
+  headers = '',
+) => {
   const { environmentVariables, logs } = await executeScript();
   for (const logOrError of logs) {
     if (logOrError instanceof Error) {

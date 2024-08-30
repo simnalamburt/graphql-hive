@@ -15,7 +15,7 @@ import { Subtitle, Title } from '@/components/ui/page';
 import { Switch } from '@/components/ui/switch';
 import { useToggle } from '@/lib/hooks';
 import { GraphiQLPlugin, useStorageContext } from '@graphiql/react';
-import { Editor as MonacoEditor, OnChange, OnMount } from '@monaco-editor/react';
+import { Editor as MonacoEditor, OnMount } from '@monaco-editor/react';
 import {
   CrossCircledIcon,
   ExclamationTriangleIcon,
@@ -126,12 +126,12 @@ function PreflightScriptContent() {
     () => storage.get(storageKey.disabled) !== 'false',
   );
 
-  const handleScriptChange: OnChange = useCallback((newValue = '') => {
+  const handleScriptChange = useCallback((newValue = '') => {
     setScript(newValue);
     storage.set(storageKey.script, newValue);
   }, []);
 
-  const handleEnvChange: OnChange = useCallback((newValue = '') => {
+  const handleEnvChange = useCallback((newValue = '') => {
     setEnv(newValue);
     storage.set(storageKey.env, newValue);
   }, []);
@@ -144,6 +144,8 @@ function PreflightScriptContent() {
   return (
     <>
       <PreflightScriptModal
+        // to unmount on submit/close
+        key={String(showModal)}
         isOpen={showModal}
         toggle={toggleShowModal}
         scriptValue={script}
@@ -220,31 +222,42 @@ function PreflightScriptModal({
   isOpen: boolean;
   toggle: () => void;
   scriptValue: string;
-  onScriptValueChange: OnChange;
+  onScriptValueChange: (value?: string) => void;
   envValue: string;
-  onEnvValueChange: OnChange;
+  onEnvValueChange: (value?: string) => void;
 }) {
-  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const scriptEditorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const envEditorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const [logs, setLogs] = useState<(LogMessage | { type: 'separator' })[]>([]);
-
+  const isScriptRan = useRef(false);
   const consoleRef = useRef<HTMLElement>(null);
 
-  const handleEditorDidMount: OnMount = useCallback(editor => {
-    editorRef.current = editor;
+  const handleScriptEditorDidMount: OnMount = useCallback(editor => {
+    scriptEditorRef.current = editor;
+  }, []);
+
+  const handleEnvEditorDidMount: OnMount = useCallback(editor => {
+    envEditorRef.current = editor;
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    onScriptValueChange(scriptEditorRef.current?.getValue());
+    onEnvValueChange(envEditorRef.current?.getValue());
+    toggle();
   }, []);
 
   const handleRunScript = useCallback(async () => {
-    const rawScript = editorRef.current?.getValue() ?? '';
-
-    const { logs, environmentVariables } = await executeScript(rawScript, envValue);
-    setLogs(prev =>
-      // Add separator only we already have logs
-      prev.length ? [...prev, { type: 'separator' }, ...logs] : logs,
+    const { logs, environmentVariables } = await executeScript(
+      scriptEditorRef.current?.getValue() ?? '',
+      envEditorRef.current?.getValue() ?? '',
     );
-
-    // @ts-expect-error -- we don't care about 2nd argument
-    onEnvValueChange(JSON.stringify(environmentVariables, null, 2));
-  }, [envValue]);
+    envEditorRef.current?.setValue(JSON.stringify(environmentVariables, null, 2));
+    setLogs(prev =>
+      // Add separator only after first run
+      isScriptRan.current ? [...prev, { type: 'separator' }, ...logs] : logs,
+    );
+    isScriptRan.current = true;
+  }, []);
 
   useEffect(() => {
     const consoleEl = consoleRef.current;
@@ -284,8 +297,7 @@ function PreflightScriptModal({
             </div>
             <MonacoEditor
               value={scriptValue}
-              onChange={onScriptValueChange}
-              onMount={handleEditorDidMount}
+              onMount={handleScriptEditorDidMount}
               {...monacoProps.script}
               options={{
                 ...monacoProps.script.options,
@@ -294,7 +306,7 @@ function PreflightScriptModal({
             />
           </div>
           <div className="flex h-[inherit] flex-col">
-            <Title className="p-2">Console output</Title>
+            <Title className="p-2">Console Output</Title>
             <section
               ref={consoleRef}
               className='h-1/2 overflow-hidden overflow-y-scroll bg-[#10151f] py-2.5 pl-[26px] pr-2.5 font-[Menlo,Monaco,"Courier_New",monospace] text-xs/[18px]'
@@ -342,7 +354,7 @@ function PreflightScriptModal({
             </Title>
             <MonacoEditor
               value={envValue}
-              onChange={onEnvValueChange}
+              onMount={handleEnvEditorDidMount}
               {...monacoProps.env}
               options={{
                 ...monacoProps.env.options,
@@ -360,7 +372,7 @@ function PreflightScriptModal({
           <Button type="button" onClick={toggle}>
             Close
           </Button>
-          <Button type="button" variant="primary">
+          <Button type="button" variant="primary" onClick={handleSubmit}>
             Save
           </Button>
         </DialogFooter>
