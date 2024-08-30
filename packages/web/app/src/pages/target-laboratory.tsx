@@ -244,7 +244,7 @@ function Save(props: {
 }
 
 const onModifyHeaders: ComponentProps<typeof GraphiQL>['onModifyHeaders'] = async (
-  headers = '',
+  headers = {},
 ) => {
   const { environmentVariables, logs } = await executeScript();
   for (const logOrError of logs) {
@@ -268,7 +268,7 @@ const onModifyHeaders: ComponentProps<typeof GraphiQL>['onModifyHeaders'] = asyn
         // Replace all occurrences of `{{keyName}}` strings only if key exists in `environmentVariables`
         value = value.replaceAll(/{{(?<keyName>.*?)}}/g, (originalString, envKey) => {
           return Object.hasOwn(environmentVariables, envKey)
-            ? environmentVariables[envKey]
+            ? (environmentVariables[envKey] as string)
             : originalString;
         });
       }

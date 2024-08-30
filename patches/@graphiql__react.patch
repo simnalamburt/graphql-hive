@@ -342,7 +342,7 @@ index 28704a9c1c6e22fa75986de8591759e13035c8c5..5204d2b25198f89da9bba70804656f02
  export declare function fuzzyExtractOperationName(str: string): string | null;
  export declare function clearHeadersFromTabs(storage: StorageAPI | null): void;
 diff --git a/dist/types/execution.d.ts b/dist/types/execution.d.ts
-index 2d458001265d925ed0323a10aecbefdb7e6d0b4e..e812ade4e7eef03a322affe56666fdcb92600a48 100644
+index 2d458001265d925ed0323a10aecbefdb7e6d0b4e..eb024cf197f13bfaa67423f5751c7cad7d0664bc 100644
 --- a/dist/types/execution.d.ts
 +++ b/dist/types/execution.d.ts
 @@ -1,4 +1,4 @@
@@ -357,9 +357,9 @@ index 2d458001265d925ed0323a10aecbefdb7e6d0b4e..e812ade4e7eef03a322affe56666fdcb
      operationName?: string;
 +    /**
 +     * Modify headers before execution
-+     * e.g. fщr interpolating headers values `"myKey": "{{valueToInterpolate}}"`
++     * e.g. for interpolating headers values `"myKey": "{{valueToInterpolate}}"`
 +     */
-+    onModifyHeaders?: <T = Record<string, unknown>>(headers: T) => MaybePromise<T>;
++    onModifyHeaders?: (headers?: Record<string, unknown>) => MaybePromise<Record<string, unknown>>;
  };
 -export declare function ExecutionContextProvider({ fetcher, getDefaultFieldNames, children, operationName, }: ExecutionContextProviderProps): import("react/jsx-runtime").JSX.Element;
 +export declare function ExecutionContextProvider({ fetcher, getDefaultFieldNames, children, operationName, onModifyHeaders, }: ExecutionContextProviderProps): import("react/jsx-runtime").JSX.Element;

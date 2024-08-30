@@ -65,7 +65,7 @@ export async function execute({
       );
     };
 
-  function getValidEnvVariable(value) {
+  function getValidEnvVariable(value: unknown) {
     if (isJSONPrimitive(value)) {
       return value;
     }
