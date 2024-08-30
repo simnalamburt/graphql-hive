@@ -266,8 +266,7 @@ const onModifyHeaders: ComponentProps<typeof GraphiQL>['onModifyHeaders'] = asyn
     Object.entries(headers).map(([key, value]) => {
       if (typeof value === 'string') {
         // Replace all occurrences of `{{keyName}}` strings only if key exists in `environmentVariables`
-        // + to not match empty `{{}}`
-        value = value.replaceAll(/{{(?<keyName>.+?)}}/g, (originalString, envKey) => {
+        value = value.replaceAll(/{{(?<keyName>.*?)}}/g, (originalString, envKey) => {
           return Object.hasOwn(environmentVariables, envKey)
             ? environmentVariables[envKey]
             : originalString;
