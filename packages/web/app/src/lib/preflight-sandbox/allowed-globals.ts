@@ -57,5 +57,5 @@ export const ALLOWED_GLOBALS = [
   // more global variables
   'btoa',
   'atob',
-  'fetch'
+  'fetch',
 ];
