@@ -1,7 +1,8 @@
 import { Injectable, Scope } from 'graphql-modules';
-import { ClickHouse, sql } from '../../operations/providers/clickhouse-client';
 import { Logger } from '../../shared/providers/logger';
 import { AuditLogEvent, auditLogSchema } from './audit-logs-types';
+import { sql as c_sql, ClickHouse } from '../../operations/providers/clickhouse-client';
+
 
 @Injectable({
   scope: Scope.Operation,
@@ -18,14 +19,11 @@ export class AuditLogManager {
   }
 
   async createLogAuditEvent(event: AuditLogEvent): Promise<void> {
-    const { eventType, organizationId, user } = event;
+    const { organizationId, user } = event;
     this.logger.info('Creating a log audit event (event=%o)', event);
 
     const parsedEvent = auditLogSchema.parse(event);
-    const query = sql`
-      INSERT INTO audit_log  event_time, user_id, user_email, organization_id, event_action, metadata)
-      FORMAT CSV
-    `;
+
     const eventTime = new Date().toISOString();
 
     const values = [
@@ -33,23 +31,33 @@ export class AuditLogManager {
       user.userId,
       user.userEmail,
       organizationId,
-      eventType,
+      parsedEvent.eventType,
       JSON.stringify(parsedEvent),
     ];
 
-    const result = await this.clickHouse.insert({
+    await this.clickHouse.insert({
+      query: c_sql`
+        INSERT INTO "audit_log" (
+          "id"
+          , "event_time"
+          , "user_id"
+          , "user_email"
+          , "organization_id"
+          , "event_action"
+          , "metadata"
+        )
+        FORMAT CSV`,
       data: [values],
-      query,
-      queryId: 'audit-log-create',
       timeout: 5000,
+      queryId: 'create-audit-log',
     });
-    return result;
   }
+
 
   async getPaginatedAuditLogs(limit: string, offset: string): Promise<AuditLogEvent[]> {
     this.logger.info('Getting paginated audit logs (limit=%s, offset=%s)', limit, offset);
 
-    const query = sql`
+    const query = c_sql`
       SELECT *
       FROM audit_log
       ORDER BY event_time DESC
@@ -70,7 +78,7 @@ export class AuditLogManager {
 
   async getAuditLogsCount(): Promise<number> {
     this.logger.info('Getting audit logs count');
-    const query = sql`
+    const query = c_sql`
       SELECT COUNT(*)
       FROM audit_log
     `;
