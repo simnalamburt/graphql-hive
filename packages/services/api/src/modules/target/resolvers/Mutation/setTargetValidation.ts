@@ -24,31 +24,31 @@ export const setTargetValidation: NonNullable<MutationResolvers['setTargetValida
     enabled: input.enabled,
   });
 
-  const result = await targetManager.getTarget({
-    organization,
-    project,
-    target,
-  });
+  const [result, currentUser] = await Promise.all([
+    targetManager.getTarget({
+      organization,
+      project,
+      target,
+    }),
+    injector.get(AuthManager).getCurrentUser(),
+  ]);
 
   // Audit Log Event
-  const currentUser = await injector.get(AuthManager).getCurrentUser();
-  const allUpdatedFields = JSON.stringify({
-    enabled: input.enabled,
-    graphqlEndpointUrl: result.graphqlEndpointUrl,
-  });
-
   await injector.get(AuditLogManager).createLogAuditEvent({
-    eventTime: new Date().toISOString(),
     eventType: 'TARGET_SETTINGS_UPDATED',
     organizationId: organization,
     user: {
       userId: currentUser.id,
       userEmail: currentUser.email,
+      user: currentUser,
     },
     TargetSettingsUpdatedAuditLogSchema: {
       projectId: project,
       targetId: target,
-      updatedFields: allUpdatedFields,
+      updatedFields: JSON.stringify({
+        enabled: input.enabled,
+        graphqlEndpointUrl: result.graphqlEndpointUrl,
+      }),
     },
   });
 

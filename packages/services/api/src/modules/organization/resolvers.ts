@@ -258,11 +258,11 @@ export const resolvers: OrganizationModule.Resolvers = {
       });
       await injector.get(AuditLogManager).createLogAuditEvent({
         eventType: 'ORGANIZATION_SETTINGS_UPDATED',
-        eventTime: new Date().toISOString(),
         organizationId: organizationId,
         user: {
           userEmail: currentUser.email,
           userId: currentUser.id,
+          user: currentUser,
         },
         OrganizationSettingsUpdatedAuditLogSchema: {
           updatedFields: jsonUpdatedFields,
@@ -475,11 +475,11 @@ export const resolvers: OrganizationModule.Resolvers = {
 
         await injector.get(AuditLogManager).createLogAuditEvent({
           eventType: 'ROLE_CREATED',
-          eventTime: new Date().toISOString(),
           organizationId,
           user: {
             userEmail: currentUser.email,
             userId: currentUser.id,
+            user: currentUser,
           },
           RoleCreatedAuditLogSchema: {
             roleName: inputValidation.data.name,
@@ -524,11 +524,11 @@ export const resolvers: OrganizationModule.Resolvers = {
 
         await injector.get(AuditLogManager).createLogAuditEvent({
           eventType: 'ROLE_UPDATED',
-          eventTime: new Date().toISOString(),
           organizationId,
           user: {
             userEmail: currentUser.email,
             userId: currentUser.id,
+            user: currentUser,
           },
           RoleUpdatedAuditLogSchema: {
             roleName: inputValidation.data.name,
@@ -558,11 +558,11 @@ export const resolvers: OrganizationModule.Resolvers = {
 
         await injector.get(AuditLogManager).createLogAuditEvent({
           eventType: 'ROLE_DELETED',
-          eventTime: new Date().toISOString(),
           organizationId,
           user: {
             userEmail: currentUser.email,
             userId: currentUser.id,
+            user: currentUser,
           },
           RoleDeletedAuditLogSchema: {
             roleName: result.ok.updatedOrganization.name,
@@ -586,11 +586,11 @@ export const resolvers: OrganizationModule.Resolvers = {
 
         await injector.get(AuditLogManager).createLogAuditEvent({
           eventType: 'ROLE_ASSIGNED',
-          eventTime: new Date().toISOString(),
           organizationId,
           user: {
             userEmail: currentUser.email,
             userId: currentUser.id,
+            user: currentUser,
           },
           RoleAssignedAuditLogSchema: {
             roleId: input.role,

@@ -161,12 +161,12 @@ export const resolvers: SchemaModule.Resolvers = {
       if (result.__typename === 'SchemaCheckSuccess') {
         const currentUser = await injector.get(AuthManager).getCurrentUser();
         await injector.get(AuditLogManager).createLogAuditEvent({
-          eventTime: new Date().toISOString(),
           eventType: 'SCHEMA_CHECKED',
           organizationId: organization,
           user: {
             userId: currentUser.id,
             userEmail: currentUser.email,
+            user: currentUser,
           },
           SchemaCheckedAuditLogSchema: {
             projectId: project,
@@ -255,12 +255,12 @@ export const resolvers: SchemaModule.Resolvers = {
         const currentUser = await injector.get(AuthManager).getCurrentUser();
 
         await injector.get(AuditLogManager).createLogAuditEvent({
-          eventTime: new Date().toISOString(),
           eventType: 'SCHEMA_PUBLISH',
           organizationId: organization,
           user: {
             userId: currentUser.id,
             userEmail: currentUser.email,
+            user: currentUser,
           },
           SchemaPublishAuditLogSchema: {
             projectId: project,
@@ -316,12 +316,12 @@ export const resolvers: SchemaModule.Resolvers = {
         const currentUser = await injector.get(AuthManager).getCurrentUser();
 
         await injector.get(AuditLogManager).createLogAuditEvent({
-          eventTime: new Date().toISOString(),
           eventType: 'SCHEMA_DELETED',
           organizationId: organization,
           user: {
             userId: currentUser.id,
             userEmail: currentUser.email,
+            user: currentUser,
           },
           SchemaDeletedAuditLogSchema: {
             projectId: project,
@@ -416,20 +416,19 @@ export const resolvers: SchemaModule.Resolvers = {
 
       // Audit Log Event
       const currentUser = await injector.get(AuthManager).getCurrentUser();
-      const allUpdatedFields = JSON.stringify({
-        newBase: input.newBase,
-      });
       await injector.get(AuditLogManager).createLogAuditEvent({
-        eventTime: new Date().toISOString(),
         eventType: 'SCHEMA_POLICY_SETTINGS_UPDATED',
         organizationId: organization,
         user: {
           userId: currentUser.id,
           userEmail: currentUser.email,
+          user: currentUser,
         },
         SchemaPolicySettingsUpdatedAuditLogSchema: {
           projectId: project,
-          updatedFields: allUpdatedFields,
+          updatedFields: JSON.stringify({
+            newBase: input.newBase,
+          }),
         },
       });
 
@@ -459,12 +458,12 @@ export const resolvers: SchemaModule.Resolvers = {
         // Audit Log Event
         const currentUser = await injector.get(AuthManager).getCurrentUser();
         await injector.get(AuditLogManager).createLogAuditEvent({
-          eventTime: new Date().toISOString(),
           eventType: 'SCHEMA_POLICY_SETTINGS_UPDATED',
           organizationId: organization,
           user: {
             userId: currentUser.id,
             userEmail: currentUser.email,
+            user: currentUser,
           },
           SchemaPolicySettingsUpdatedAuditLogSchema: {
             projectId: project,
@@ -495,12 +494,12 @@ export const resolvers: SchemaModule.Resolvers = {
         // Audit Log Event
         const currentUser = await injector.get(AuthManager).getCurrentUser();
         await injector.get(AuditLogManager).createLogAuditEvent({
-          eventTime: new Date().toISOString(),
           eventType: 'SCHEMA_POLICY_SETTINGS_UPDATED',
           organizationId: organization,
           user: {
             userId: currentUser.id,
             userEmail: currentUser.email,
+            user: currentUser,
           },
           SchemaPolicySettingsUpdatedAuditLogSchema: {
             projectId: project,

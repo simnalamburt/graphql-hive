@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { User } from '../../../__generated__/types';
+import type { User } from '../../../shared/entities';
 
 const UserInvitedAuditLogSchema = z.object({
   inviteeId: z.string(),
@@ -184,12 +184,10 @@ export const auditLogSchema = z.discriminatedUnion('eventType', [
 ]);
 
 export type AuditLogEvent = z.infer<typeof auditLogSchema> & {
-  id?: string;
-  eventTime: string;
   user: {
     userId: string;
     userEmail: string;
-    user?: User | null;
+    user: (User & { isAdmin: boolean }) | null;
   };
   organizationId: string;
 };

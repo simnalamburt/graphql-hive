@@ -41,12 +41,12 @@ export const updateProjectName: NonNullable<MutationResolvers['updateProjectName
   const currentUser = await injector.get(AuthManager).getCurrentUser();
 
   await injector.get(AuditLogManager).createLogAuditEvent({
-    eventTime: new Date().toISOString(),
     eventType: 'PROJECT_SETTINGS_UPDATED',
     organizationId: organizationId,
     user: {
       userId: currentUser.id,
       userEmail: currentUser.email,
+      user: currentUser,
     },
     ProjectSettingsUpdatedAuditLogSchema: {
       projectId: projectId,

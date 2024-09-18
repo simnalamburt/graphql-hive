@@ -46,12 +46,12 @@ export const createTarget: NonNullable<MutationResolvers['createTarget']> = asyn
   // Audit Log Event
   const currentUser = await injector.get(AuthManager).getCurrentUser();
   await injector.get(AuditLogManager).createLogAuditEvent({
-    eventTime: new Date().toISOString(),
     eventType: 'TARGET_CREATED',
     organizationId: target.orgId,
     user: {
       userId: currentUser.id,
       userEmail: currentUser.email,
+      user: currentUser,
     },
     TargetCreatedAuditLogSchema: {
       projectId: target.projectId,

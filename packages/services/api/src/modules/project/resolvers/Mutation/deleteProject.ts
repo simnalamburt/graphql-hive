@@ -27,12 +27,12 @@ export const deleteProject: NonNullable<MutationResolvers['deleteProject']> = as
   // Audit Log Event
   const currentUser = await injector.get(AuthManager).getCurrentUser();
   await injector.get(AuditLogManager).createLogAuditEvent({
-    eventTime: new Date().toISOString(),
     eventType: 'PROJECT_DELETED',
     organizationId: organizationId,
     user: {
       userId: currentUser.id,
       userEmail: currentUser.email,
+      user: currentUser,
     },
     ProjectDeletedAuditLogSchema: {
       projectId: projectId,

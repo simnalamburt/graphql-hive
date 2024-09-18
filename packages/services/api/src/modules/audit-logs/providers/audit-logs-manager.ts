@@ -19,17 +19,17 @@ export class AuditLogManager {
   }
 
   async createLogAuditEvent(event: AuditLogEvent): Promise<void> {
-    const { eventTime, eventType, id, organizationId, user } = event;
+    const { eventType, organizationId, user } = event;
     this.logger.info('Creating a log audit event (event=%o)', event);
-    const parsedEvent = auditLogSchema.parse(event);
 
+    const parsedEvent = auditLogSchema.parse(event);
     const query = sql`
-      INSERT INTO audit_log (id, event_time, user_id, user_email, organization_id, event_action, metadata)
+      INSERT INTO audit_log  event_time, user_id, user_email, organization_id, event_action, metadata)
       FORMAT CSV
     `;
+    const eventTime = new Date().toISOString();
 
     const values = [
-      id,
       eventTime,
       user.userId,
       user.userEmail,

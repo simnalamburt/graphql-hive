@@ -53,25 +53,24 @@ export const updateTargetValidationSettings: NonNullable<
 
   // Audit Log Event
   const currentUser = await injector.get(AuthManager).getCurrentUser();
-  const allUpdatedFields = JSON.stringify({
-    period: input.period,
-    percentage: input.percentage,
-    targets: result.data.targets,
-    excludedClients: result.data.excludedClients ?? [],
-  });
 
   await injector.get(AuditLogManager).createLogAuditEvent({
-    eventTime: new Date().toISOString(),
     eventType: 'TARGET_SETTINGS_UPDATED',
     organizationId: organization,
     user: {
       userId: currentUser.id,
       userEmail: currentUser.email,
+      user: currentUser,
     },
     TargetSettingsUpdatedAuditLogSchema: {
       projectId: project,
       targetId: target,
-      updatedFields: allUpdatedFields,
+      updatedFields: JSON.stringify({
+        period: input.period,
+        percentage: input.percentage,
+        targets: result.data.targets,
+        excludedClients: result.data.excludedClients ?? [],
+      }),
     },
   });
 

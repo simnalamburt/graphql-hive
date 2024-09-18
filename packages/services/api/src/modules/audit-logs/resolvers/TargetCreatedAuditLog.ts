@@ -24,7 +24,7 @@ export const TargetCreatedAuditLog: TargetCreatedAuditLogResolvers = {
     throw new Error('Invalid eventType');
   },
   organizationId: e => e.organizationId,
-  user: async (parent, _args, _ctx) => {
+  user: async parent => {
     return {
       userEmail: parent.user.userEmail,
       userId: parent.user.userId,
